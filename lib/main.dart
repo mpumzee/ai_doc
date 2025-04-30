@@ -1,10 +1,18 @@
+import 'package:ai_doc/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'registration_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://eximxyncuxlgoqwvczmh.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4aW14eW5jdXhsZ29xd3Zjem1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzM4NDEsImV4cCI6MjA2MTUwOTg0MX0.VpVEwWWm2NRUQrghAqhO5Pf5iuJU2cmZAao4-1b0NJc',
+  );
   runApp(const MainApp());
 }
 
@@ -17,7 +25,10 @@ class MainApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
-      home: ChatScreen(),
+      home: LoginPage(),
+      routes: {
+        '/register': (context) => RegistrationPage(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }
@@ -86,10 +97,16 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _messages.add({'role': 'bot', 'content': botResponse});
       });
-    } catch (e) {
-      setState(() {
-        _messages.add({'role': 'bot', 'content': 'Error: Unable to fetch response.'});
-      });
+    } on Exception catch (e) {
+      if (e.toString().contains('503')) {
+        setState(() {
+          _messages.add({'role': 'bot', 'content': 'Service Unavailable: The AI model is currently overloaded. Please try again later.'});
+        });
+      } else {
+        setState(() {
+          _messages.add({'role': 'bot', 'content': 'Error: Unable to fetch response.'});
+        });
+      }
     }
   }
 
@@ -140,9 +157,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Navigate to help page
               } else if (value == 'Profile') {
                 // Navigate to profile page
-              } else if (value == 'Logout') {
-                // Handle logout
-              }
+                } else if (value == 'Logout') {
+                Supabase.instance.client.auth.signOut();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                  (route) => false,
+                );
+                }
             },
             itemBuilder: (BuildContext context) {
               return [
@@ -169,6 +190,30 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'Welcome to AI Doctor!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 53, 10, 123),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Feel free to chat with the AI doctor about your symptoms or concerns.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 20),
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
