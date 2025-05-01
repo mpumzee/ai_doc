@@ -7,6 +7,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'registration_page.dart';
+import 'package:ai_doc/prescription_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,7 @@ class MainApp extends StatelessWidget {
       home: LoginPage(),
       routes: {
         '/register': (context) => RegistrationPage(),
+        '/prescriptions': (context) => PrescriptionPage(),
       },
       debugShowCheckedModeBanner: false,
     );
@@ -94,9 +96,28 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
 
     try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      final email = user?.email;
+
+      if (email == null) {
+        setState(() {
+          _messages.add({'role': 'bot', 'content': 'Error: User is not logged in.'});
+        });
+        return;
+      }
+
       final botResponse = await GeminiAPI.fetchResponse(message);
       setState(() {
         _messages.add({'role': 'bot', 'content': botResponse});
+      });
+
+      // Save the conversation to the database
+      await supabase.from('conversations').insert({
+        'email': email,
+        'user_message': message,
+        'bot_response': botResponse,
+        'timestamp': DateTime.now().toIso8601String(),
       });
     } on Exception catch (e) {
       if (e.toString().contains('503')) {
@@ -152,10 +173,12 @@ class _ChatScreenState extends State<ChatScreen> {
           PopupMenuButton<String>(
             onSelected: (value) {
               // Handle menu item selection
-              if (value == 'Settings') {
-                // Navigate to settings page
+              if (value == 'Prescription') {
+                 Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => PrescriptionPage()),
+                );
               } else if (value == 'Help') {
-                // Navigate to help page
+               // implement help page
               } else if (value == 'Profile') {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => PatientProfilePage()),
@@ -176,8 +199,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Text('Profile'),
                 ),
                 const PopupMenuItem(
-                  value: 'Settings',
-                  child: Text('Settings'),
+                  value: 'Prescription',
+                  child: Text('Prescription'),
                 ),
                 const PopupMenuItem(
                   value: 'Help',

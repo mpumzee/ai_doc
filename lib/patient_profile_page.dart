@@ -72,42 +72,53 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-  onPressed: () async {
-    final supabase = Supabase.instance.client;
-    try {
-      // Insert returns the inserted rows if successful
-      final response = await supabase.from('patient_profile').insert({
-        'full_name': _nameController.text,
-        'age': int.tryParse(_ageController.text) ?? 0,
-        'gender': _genderController.text,
-        'date_of_birth': _dobController.text,
-        'contact_information': _contactController.text,
-      });
+                onPressed: () async {
+                  final supabase = Supabase.instance.client;
+                  try {
+                    // Get the logged-in user's email
+                    final user = supabase.auth.currentUser;
+                    final email = user?.email;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient profile saved successfully!')),
-      );
-    } on PostgrestException catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Database error: ${error.message}')),
-      );
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unexpected error: $error')),
-      );
-    }
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: const Color.fromARGB(255, 53, 10, 123),
-    padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-    textStyle: const TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-  child: const Text('Save'),
-)
+                    if (email == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('User is not logged in.')),
+                      );
+                      return;
+                    }
 
+                    // Insert returns the inserted rows if successful
+                    final response = await supabase.from('patient_profile').insert({
+                      'full_name': _nameController.text,
+                      'age': int.tryParse(_ageController.text) ?? 0,
+                      'gender': _genderController.text,
+                      'date_of_birth': _dobController.text,
+                      'contact_information': _contactController.text,
+                      'email': email, // Add the email field
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Patient profile saved successfully!')),
+                    );
+                  } on PostgrestException catch (error) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Database error: ${error.message}')),
+                    );
+                  } catch (error) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Unexpected error: $error')),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 53, 10, 123),
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Save'),
+              ),
             ],
           ),
         ),
