@@ -1,4 +1,5 @@
 import 'package:ai_doc/login_page.dart';
+import 'package:ai_doc/patient_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -156,6 +157,9 @@ class _ChatScreenState extends State<ChatScreen> {
               } else if (value == 'Help') {
                 // Navigate to help page
               } else if (value == 'Profile') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => PatientProfilePage()),
+                );
                 // Navigate to profile page
                 } else if (value == 'Logout') {
                 Supabase.instance.client.auth.signOut();
