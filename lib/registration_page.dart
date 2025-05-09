@@ -10,7 +10,8 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final SupabaseClient _supabaseClient = Supabase.instance.client;
 
   @override
@@ -23,41 +24,86 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   Future<void> _register() async {
-    final email = _emailController.text;
+    final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     try {
-  final response = await _supabaseClient.auth.signUp(
-    email: email,
-    password: password,
-  );
-
-  if (response.session != null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Registration successful!')),
-    );
-  } else {
-    // Registration might require email confirmation, so user is created but no session yet
-    if (response.user != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful! Please check your email to confirm.')),
+      final response = await _supabaseClient.auth.signInWithPassword(
+        email: email,
+        password: 'dummy', // or actual password if available
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration failed: Unknown error')),
-      );
+      print('User exists (login successful): ${response.user}');
+    } catch (e) {
+      if (e is AuthException) {
+        if (e.message.contains('Invalid login credentials')) {
+          print('User likely exists, but password is wrong.');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This email is already registered. Please log in.'),
+            ),
+          );
+        } else if (e.message.contains('User not found')) {
+          print('User does NOT exist.');
+        } else {
+          print('Other auth error: ${e.message}');
+        }
+      }
+      return;
     }
-  }
-} on AuthException catch (error) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Registration error: ${error.message}')),
-  );
-} catch (e) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Unexpected error: $e')),
-  );
-}
 
+    try {
+      final response = await _supabaseClient.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      print('Registration response.....: $response');
+      print('Session: ${response.session}');
+      print('User: ${response.user}');
+
+      if (response.user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Registration successful! Please check your email to confirm.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Registration completed, but no user object returned.',
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      final errorMsg = e.message.toLowerCase();
+      print('Error details: $e');
+      // Log the error for debugging
+      print('Supabase AuthException: ${e.message}');
+
+      if (errorMsg.contains('already registered') ||
+          errorMsg.contains('user already exists') ||
+          errorMsg.contains('email already registered') ||
+          errorMsg.contains('duplicate') ||
+          errorMsg.contains('unique constraint')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This email is already registered. Please log in.'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration error: ${e.message}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unexpected error: $e')));
+    }
   }
 
   @override
@@ -109,10 +155,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             const SizedBox(height: 10),
             const Text(
               'Please create a new account to get started.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -143,29 +186,33 @@ class _RegistrationPageState extends State<RegistrationPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-              if (_passwordController.text != _confirmPasswordController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Passwords do not match!')),
-                );
-                return;
-              }
-              _register();
+                if (_passwordController.text !=
+                    _confirmPasswordController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Passwords do not match!')),
+                  );
+                  return;
+                }
+                _register();
               },
               style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromARGB(255, 53, 10, 123),
-              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white, // Ensures text is white
-              ),
+                backgroundColor: Color.fromARGB(255, 53, 10, 123),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 50,
+                  vertical: 15,
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // Ensures text is white
+                ),
               ),
               child: const Text(
-              'Register',
-              style: TextStyle(color: Colors.white), // Ensures text is white
+                'Register',
+                style: TextStyle(color: Colors.white), // Ensures text is white
               ),
             ),
-            
+
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
